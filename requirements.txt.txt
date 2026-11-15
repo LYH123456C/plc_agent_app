@@ -1,6 +1,0 @@
-streamlit
-openai
-python_dotenv
-numpy
-chromadb
-matplotlib
