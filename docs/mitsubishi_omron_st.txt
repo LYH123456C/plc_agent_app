@@ -1,0 +1,166 @@
+三菱 (GX Works) 与 欧姆龙 (Sysmac Studio) ST 语言语法速查
+
+1. 变量声明
+局部变量使用 VAR...END_VAR 声明，赋值使用 :=
+VAR
+    StartBtn : BOOL := FALSE; // 启动按钮
+    MotorOut : BOOL := FALSE; // 电机输出
+    Counter : INT := 0;       // 计数器
+END_VAR
+
+2. 赋值与逻辑运算
+赋值：MotorOut := StartBtn;
+与运算 (AND)：MotorOut := StartBtn AND StopBtn;
+或运算 (OR)：MotorOut := StartBtn OR AutoMode;
+非运算 (NOT)：MotorOut := NOT Fault;
+异或运算 (XOR)：MotorOut := StartBtn XOR StopBtn;
+
+3. 条件判断
+IF MotorOut THEN
+    Counter := Counter + 1;
+ELSIF AutoMode THEN
+    Counter := 0;
+ELSE
+    Counter := Counter - 1;
+END_IF;
+
+4. 定时器指令
+注意：三菱和欧姆龙的定时器系统变量名称不同，但用法逻辑相似。
+三菱定时器 (OUT_T 或 TIMER)：需要声明实例，PT 为预设时间。
+欧姆龙定时器 (TON)：IN 为启动条件，PT 为设定时间，Q 为输出，ET 为当前时间。
+欧姆龙用法示例：Timer_Instance(IN := StartBtn, PT := T#5S, Q => TimerDone, ET => ElapsedTime);
+
+5. 计数器指令
+三菱/欧姆龙加计数器 (CTU)：
+Counter_Instance(CU := CountSignal, R := ResetSignal, PV := 10, Q => CountDone, CV => CurrentCount);
+
+6. 循环语句
+FOR i := 0 TO 10 BY 1 DO
+    ArrayData[i] := 0;
+END_FOR;
+
+WHILE Counter < 10 DO
+    Counter := Counter + 1;
+END_WHILE;
+【三菱 FX / Q / iQ-R 系列 ST 语言高级语法规范】
+
+1. 软元件直接寻址（绝对禁止使用 AT %I 格式）
+输入继电器（X）：X0, X1, X10
+输出继电器（Y）：Y0, Y1, Y10
+内部辅助继电器（M）：M0, M100
+数据寄存器（D）：D0, D100 (16位 INT / 32位 DINT)
+定时器（T）：T0, T1 (当前值)
+计数器（C）：C0, C1 (当前值)
+特殊继电器：SM400 (常 ON), SM401 (常 OFF), SM412 (1秒时钟脉冲)
+
+2. 变量声明（ST 语言中，通常不在代码里声明 X/Y，而是直接在 GX Works 的软元件表里定义。如果在 ST 里声明，写法如下）
+VAR
+    StartBtn : BOOL;   // 对应软元件 X0
+    StopBtn : BOOL;    // 对应软元件 X1
+    MotorOut : BOOL;   // 对应软元件 Y0
+    RunFlag : BOOL;    // 对应软元件 M0
+END_VAR
+
+3. 定时器指令（三菱特有）
+三菱 ST 中，定时器通常声明为实例，或者直接调用 OUT_T 指令。
+声明：Timer_1s : OUT_T;
+调用：Timer_1s(IN := RunFlag, PT := T#1S, Q => Timer_Done);
+或者直接使用：OUT_T(Timer_1s, RunFlag, T#1S); // 传统写法
+
+4. 计数器指令
+声明：Counter_1 : CTU;
+调用：Counter_1(CU := Sensor_Pulse, R := ResetBtn, PV := 10, Q => Count_Done, CV => Current_Val);
+
+5. 状态机控制（CASE）—— 三菱 ST 同样支持
+CASE step OF
+    0: // 初始状态
+        MotorOut := FALSE;
+        IF StartBtn AND NOT StopBtn THEN
+            step := 10;
+        END_IF;
+    10: // 运行状态
+        MotorOut := TRUE;
+        IF StopBtn OR Fault THEN
+            step := 0;
+        END_IF;
+END_CASE;
+
+6. 模拟量处理（三菱的 ADC 指令）
+三菱不像西门子用 SCALE_X，三菱通常直接读取模拟量模块的数值，然后进行数学运算。
+示例（将 0-4000 的 ADC 值转换为 0.0-100.0）：
+VAR
+    ADC_Value : INT; // 读到的模拟量整数
+    Temp_Real : REAL; // 转换后的温度
+END_VAR
+// 转换公式：Temp_Real := INT_TO_REAL(ADC_Value) / 40.0;
+Temp_Real := INT_TO_REAL(ADC_Value) / 40.0;
+
+7. 类型转换与数学运算
+整数转浮点：INT_TO_REAL(X)
+浮点转整数：REAL_TO_INT(X)
+取绝对值：ABS(X)
+指数运算：X ** Y
+
+8. 定时器与边沿检测
+上升沿检测：LDP(StartBtn) 或 直接在 ST 中写 IF StartBtn AND NOT StartBtn_Prev THEN StartBtn_Prev := StartBtn; END_IF;
+【三菱 FX / Q / iQ-R 系列 ST 语言高级语法规范】
+
+1. 软元件直接寻址（绝对禁止使用 AT %I 格式）
+输入继电器（X）：X0, X1, X10
+输出继电器（Y）：Y0, Y1, Y10
+内部辅助继电器（M）：M0, M100
+数据寄存器（D）：D0, D100 (16位 INT / 32位 DINT)
+定时器（T）：T0, T1 (当前值)
+计数器（C）：C0, C1 (当前值)
+特殊继电器：SM400 (常 ON), SM401 (常 OFF), SM412 (1秒时钟脉冲)
+
+2. 变量声明（ST 语言中，通常不在代码里声明 X/Y，而是直接在 GX Works 的软元件表里定义。如果在 ST 里声明，写法如下）
+VAR
+    StartBtn : BOOL;   // 对应软元件 X0
+    StopBtn : BOOL;    // 对应软元件 X1
+    MotorOut : BOOL;   // 对应软元件 Y0
+    RunFlag : BOOL;    // 对应软元件 M0
+END_VAR
+
+3. 定时器指令（三菱特有）
+三菱 ST 中，定时器通常声明为实例，或者直接调用 OUT_T 指令。
+声明：Timer_1s : OUT_T;
+调用：Timer_1s(IN := RunFlag, PT := T#1S, Q => Timer_Done);
+或者直接使用：OUT_T(Timer_1s, RunFlag, T#1S); // 传统写法
+
+4. 计数器指令
+声明：Counter_1 : CTU;
+调用：Counter_1(CU := Sensor_Pulse, R := ResetBtn, PV := 10, Q => Count_Done, CV => Current_Val);
+
+5. 状态机控制（CASE）—— 三菱 ST 同样支持
+CASE step OF
+    0: // 初始状态
+        MotorOut := FALSE;
+        IF StartBtn AND NOT StopBtn THEN
+            step := 10;
+        END_IF;
+    10: // 运行状态
+        MotorOut := TRUE;
+        IF StopBtn OR Fault THEN
+            step := 0;
+        END_IF;
+END_CASE;
+
+6. 模拟量处理（三菱的 ADC 指令）
+三菱不像西门子用 SCALE_X，三菱通常直接读取模拟量模块的数值，然后进行数学运算。
+示例（将 0-4000 的 ADC 值转换为 0.0-100.0）：
+VAR
+    ADC_Value : INT; // 读到的模拟量整数
+    Temp_Real : REAL; // 转换后的温度
+END_VAR
+// 转换公式：Temp_Real := INT_TO_REAL(ADC_Value) / 40.0;
+Temp_Real := INT_TO_REAL(ADC_Value) / 40.0;
+
+7. 类型转换与数学运算
+整数转浮点：INT_TO_REAL(X)
+浮点转整数：REAL_TO_INT(X)
+取绝对值：ABS(X)
+指数运算：X ** Y
+
+8. 定时器与边沿检测
+上升沿检测：LDP(StartBtn) 或 直接在 ST 中写 IF StartBtn AND NOT StartBtn_Prev THEN StartBtn_Prev := StartBtn; END_IF;

@@ -1,0 +1,101 @@
+ORGANIZATION_BLOCK "OB_Name"   // 组织块
+VAR_TEMP
+    // 临时变量声明
+    temp_var : INT;
+END_VAR
+
+VAR_INPUT
+    // 输入变量声明
+    start_btn : BOOL;
+END_VAR
+
+VAR_OUTPUT
+    // 输出变量声明
+    motor_out : BOOL;
+END_VAR
+
+BEGIN
+    // 程序代码区
+    motor_out := start_btn;
+END_ORGANIZATION_BLOCK
+2. 变量声明与寻址
+
+· 局部变量：#变量名，例如 #start_btn
+· 全局变量："变量名"，例如 "Tag_Start" 或 "Data_block_1".Tag
+
+3. 赋值与运算
+
+· 赋值：:=，例如 "Q0.0" := #start_btn;
+· 算术运算：+ - * / MOD（取余）
+· 比较运算：< <= > >= = <>
+
+4. 基本逻辑运算
+
+· AND（与）：out := in1 AND in2;
+· OR（或）：out := in1 OR in2;
+· XOR（异或）：out := in1 XOR in2;
+· NOT（非）：out := NOT in1;
+
+5. 定时器指令
+
+· TON（接通延时）："TON_DB".TON(IN := "Tag_Start", PT := "Tag_PresetTime", Q => "Tag_Status", ET => "Tag_ElapsedTime");
+
+6. 计数器指令
+
+· CTU（加计数）："CTU_DB".CTU(CU := "Tag_Count", R := "Tag_Reset", PV := "Tag_Preset", Q => "Tag_Status", CV => "Tag_Value");
+
+7. 控制语句
+
+· 条件判断：IF #A > #B THEN "C" := #A; END_IF;
+· 循环：FOR x := 0 TO max DO sum := sum + value(x); END_FOR;
+8. 状态机控制语句（CASE）
+在复杂的步进控制中，必须使用 CASE 语句实现状态机。
+示例：
+CASE step OF
+    0: // 初始等待状态
+        IF StartBtn THEN
+            step := 10;
+        END_IF;
+    10: // 动作状态1
+        Motor := TRUE;
+        IF Sensor1 THEN
+            step := 20;
+        END_IF;
+    20: // 动作状态2
+        Motor := FALSE;
+        // ...
+END_CASE;
+9. 高级定时器与计数器（必须带背景DB）
+TON（接通延时）："Timer_DB".TON(IN := "启动信号", PT := T#5S, Q => "输出", ET => "当前时间");
+TOF（断开延时）："Timer_DB2".TOF(IN := "停止信号", PT := T#3S, Q => "输出", ET => "当前时间");
+CTU（加计数）："Counter_DB".CTU(CU := "计数脉冲", R := "复位信号", PV := 10, Q => "计数完成", CV => "当前值");
+
+10. 模拟量处理与类型转换（极其重要）
+整数转浮点：Result := INT_TO_REAL(Input_Int);
+浮点转整数：Result := REAL_TO_INT(Input_Real);
+量程转换（西门子标准指令）：将 0-27648 转换为 0.0-100.0：
+"Scale_DB".SCALE_X(MIN := 0.0, VALUE := "AI_Value", MAX := 100.0);
+"Norm_DB".NORM_X(MIN := 0, VALUE := "AI_Int", MAX := 27648);
+
+11. 边沿检测（R_TRIG / F_TRIG）
+在检测按钮按下的瞬间，必须使用上升沿指令：
+"R_TRIG_DB".R_TRIG(CLK := "Start_Btn");
+IF "R_TRIG_DB".Q THEN
+    // 按钮按下的瞬间执行一次
+    "Flag" := TRUE;
+END_IF;
+
+12. 数组与循环控制
+数组声明：Motor_Array : ARRAY[1..5] OF BOOL;
+遍历数组：
+FOR i := 1 TO 5 DO
+    Motor_Array[i] := FALSE; // 批量复位所有电机
+END_FOR;
+
+13. 多重背景与函数块（FB）
+在大型项目中，尽量使用 FB 封装逻辑。声明变量时使用 VAR_INPUT, VAR_OUTPUT, VAR_IN_OUT, VAR_STAT。
+
+14. 严格规范（必须遵守）
+- 所有的定时器、计数器必须声明为 TON, TOF, CTU 类型。
+- 遇到复杂的步进控制，绝对禁止使用多个 IF 堆砌，必须使用 CASE 语句。
+- 变量名必须做到见名知意，如 Motor_Running, Temp_Alarm。
